@@ -16,12 +16,11 @@ typedef struct {
 } pos;
 pos fruit;
 
-
 bool *spaces;
 
 struct s_node
 {
-    pos *position;
+    pos *position; // **TODO: make this a void pointer for generality.
     struct s_node *prev;
     struct s_node *next;
 } *front=NULL, *back=NULL;
@@ -41,7 +40,21 @@ pos* dequeue( )
 
 void enqueue( pos position )
 {
+   pos *newpos   = (pos*)  malloc( sizeof( position ) );
+   node *newnode = (node*) malloc( sizeof( node ) );
 
+   newpos->x = position.x;
+   newpos->y = position.y;
+   newnode->position = newpos;
+
+   if( front == NULL && back == NULL )
+       front = back = newnode;
+   else
+   {
+       back->next = newnode;
+       newnode->prev = back;
+       back = newnode;
+   }
 }
 
 void snake_write_text( int y, int x, char* str )
@@ -67,14 +80,21 @@ void snake_draw_board( )
 
 void snake_game_over( )
 {
-
+    free( spaces );
+    while( front )
+    {
+        node *n = front;
+        front = front->next;
+        free( n );
+    }
+    endwin();
+    exit(0);
 }
 
 bool snake_in_bounds( pos position )
 {
     return position.y < g_height - 1 && position.y > 0 && position.x < g_width - 1 && position.x > 0;
 }
-
 
 int snake_cooridinate_to_index( pos position )
 {
@@ -101,10 +121,35 @@ void snake_draw_fruit( )
     snake_write_text( fruit.y, fruit.x, "F" );
 }
 
-
 bool snake_move_player( pos head )
 {
+    attrset( COLOR_PAIR( 1 ) ) ;
 
+    int idx = snake_cooridinate_to_index( head );
+    if( spaces[idx] )
+        snake_game_over( );
+    spaces[idx] = true; 
+    enqueue( head );
+    g_score += 10;
+
+    if( head.x == fruit.x && head.y == fruit.y )
+    {
+        snake_draw_fruit( );
+        g_score += 1000;
+    }
+    else
+    {
+        pos *tail = dequeue( );
+        spaces[snake_cooridinate_to_index( *tail )] = false;
+        snake_write_text( tail->y, tail->x, " " );
+    }
+
+    snake_write_text( head.y, head.x, "S" );
+
+    char buffer[25];
+    sprintf( buffer, "%d", g_score );
+    attrset( COLOR_PAIR( 2 ) );
+    snake_write_text( g_height+1, 9, buffer );
 
 }
 
@@ -144,7 +189,39 @@ int main( int argc, char *argv[] )
 
     while( 1 )
     {
-
+        int in = getch( );
+        if( in != ERR )
+            key = in;
+        switch( key )
+        {
+            case KEY_DOWN:
+            case 'j':
+            case 'J':
+            case 's':
+            case 'S':
+                head.y++;
+                break;
+            case KEY_RIGHT:
+            case 'l':
+            case 'L':
+            case 'd':
+            case 'D':
+                head.x++;
+                break;
+            case KEY_UP:
+            case 'k':
+            case 'K':
+            case 'w':
+            case 'W':
+                head.y--;
+                break;
+            case KEY_LEFT:
+            case 'h':
+            case 'H':
+            case 'a':
+            case 'A':
+                head.x--;
+                break;
 
         }
         if( !snake_in_bounds( head ) )
